@@ -47,7 +47,7 @@ type ComponentPlanStatus struct {
 	// InstalledRevision represents the helm release Revision that is installed by this ComponentPlan
 	// +optional
 	InstalledRevision int `json:"installedRevision,omitempty"`
-	// Latest indicates whether the ComponentPlan corresponds to the latest helm release Revision
+	// Latest indicates whether the ComponentPlan corresponds to the latest helm release Revision, add some test
 	// +optional
 	// FIXME rethink this field
 	Latest *bool `json:"latest,omitempty"`

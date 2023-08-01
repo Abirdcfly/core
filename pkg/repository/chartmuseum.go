@@ -48,6 +48,7 @@ const (
 
 var _ IWatcher = (*chartmuseum)(nil)
 
+// create a new chartmuseeum
 func NewChartmuseum(
 	ctx context.Context,
 	logger logr.Logger,
@@ -83,19 +84,21 @@ func NewChartmuseum(
 	}
 }
 
+// the definition of chart museum
 type chartmuseum struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
-	instance *v1alpha1.Repository
+	instance *v1alpha1.Repository // the corresponding repository
 	duration time.Duration
 	repoName string
 
 	c         client.Client
 	logger    logr.Logger
-	scheme    *runtime.Scheme
-	filterMap map[string]v1alpha1.FilterCond
+	scheme    *runtime.Scheme                // not in standard format, should be printed out before used
+	filterMap map[string]v1alpha1.FilterCond // filter conditions
 }
 
+// Start the chart museum
 func (c *chartmuseum) Start() {
 	c.logger.Info("Start to fetch")
 	_ = helm.RepoRemove(c.ctx, c.logger, c.repoName)
@@ -110,6 +113,7 @@ func (c *chartmuseum) Start() {
 	go wait.Until(c.Poll, c.duration, c.ctx.Done())
 }
 
+// Stop the chart museum
 func (c *chartmuseum) Stop() {
 	c.logger.Info("Delete Or Update Repository, stop watcher")
 	if err := helm.RepoRemove(c.ctx, c.logger, c.repoName); err != nil {
@@ -118,6 +122,7 @@ func (c *chartmuseum) Stop() {
 	c.cancel()
 }
 
+// Poll the repositories
 func (c *chartmuseum) Poll() {
 	now := metav1.Now()
 	readyCond := v1alpha1.Condition{
@@ -129,7 +134,7 @@ func (c *chartmuseum) Poll() {
 	syncCond := v1alpha1.Condition{
 		Status:             v1.ConditionTrue,
 		LastTransitionTime: now,
-		Message:            "index yaml synced successfully, createing components",
+		Message:            "index yaml synced successfully, creating components",
 		Type:               v1alpha1.TypeSynced,
 	}
 
@@ -137,6 +142,8 @@ func (c *chartmuseum) Poll() {
 		c.logger.Error(err, "Failed to update repository")
 		return
 	}
+
+	// get the component list from the index.yaml file
 	indexFile, err := c.fetchIndexYaml()
 	if err != nil {
 		c.logger.Error(err, "Failed to fetch index file")
@@ -197,6 +204,7 @@ func (c *chartmuseum) Poll() {
 	}
 }
 
+// Create a component in the k8s context
 func (c *chartmuseum) Create(component *v1alpha1.Component) error {
 	status := component.Status
 	if err := c.c.Create(c.ctx, component); err != nil {
@@ -206,14 +214,17 @@ func (c *chartmuseum) Create(component *v1alpha1.Component) error {
 	return c.Update(component)
 }
 
+// Update a component in the k8s context
 func (c *chartmuseum) Update(component *v1alpha1.Component) error {
 	return c.c.Status().Update(c.ctx, component)
 }
 
+// Delete a component in the k8s context
 func (c *chartmuseum) Delete(component *v1alpha1.Component) error {
 	return c.Update(component)
 }
 
+// fetchIndexYaml gets the index.yaml file
 func (c *chartmuseum) fetchIndexYaml() (*hrepo.IndexFile, error) {
 	var settings = cli.New()
 	repoCache := settings.RepositoryCache
@@ -230,6 +241,7 @@ func (c *chartmuseum) fetchIndexYaml() (*hrepo.IndexFile, error) {
 	return &repositories, nil
 }
 
+// indexFileToComponent gets a list of components from the index file
 func (c *chartmuseum) indexFileToComponent(indexFile *hrepo.IndexFile) []v1alpha1.Component {
 	components := make([]v1alpha1.Component, len(indexFile.Entries))
 	index := 0
@@ -240,6 +252,8 @@ func (c *chartmuseum) indexFileToComponent(indexFile *hrepo.IndexFile) []v1alpha
 		if !keep {
 			continue
 		}
+
+		// ser up the fundamental information
 		components[index] = v1alpha1.Component{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s.%s", c.instance.GetName(), entryName),
@@ -276,6 +290,7 @@ func (c *chartmuseum) indexFileToComponent(indexFile *hrepo.IndexFile) []v1alpha
 					}
 				}
 			}
+
 			components[index].Status.Versions = append(components[index].Status.Versions, v1alpha1.ComponentVersion{
 				Version:    version.Version,
 				AppVersion: version.AppVersion,

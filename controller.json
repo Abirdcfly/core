@@ -1,0 +1,2 @@
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"labels":{"control-plane":"controller-manager"},"name":"controller-manager","namespace":"baas-system"},"spec":{"replicas":1,"selector":{"matchLabels":{"control-plane":"controller-manager","name":"controller-manager"}},"template":{"metadata":{"labels":{"control-plane":"controller-manager","name":"controller-manager"}},"spec":{"containers":[{"image":"172.22.50.223/bestchains-dev/fabric-operator:7776e71","name":"operator"}]}}}}
+
